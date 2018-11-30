@@ -9,6 +9,7 @@ class NN(object):
     # ctx_input.shape=[batch_size, mem_size]
 
     def __init__(self, config):
+        
         if config != None:
             # the config.
             self.init_lr = config['init_lr']  # the initialize learning rate.

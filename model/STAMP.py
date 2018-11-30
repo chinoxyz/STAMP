@@ -114,11 +114,16 @@ class Seq2SeqAttNN(NN):
         )
 
         # the lookup dict.
-        self.embe_dict = tf.Variable(
+        self.embe_dict = tf.get_variable(
+                'item_embedding', shape=[len(self.pre_embedding), 100], dtype=tf.float32,
+                initializer=tf.initializers.truncated_normal(stddev=0.002)
+            )  # F * D
+
+        '''tf.Variable(
             self.pre_embedding,
             dtype=tf.float32,
             trainable=self.emb_up
-        )
+        )'''
 
         self.pe_mask = tf.Variable(
             self.pre_embedding_mask,
@@ -142,7 +147,7 @@ class Seq2SeqAttNN(NN):
             sequence_length = tf.cast(tf.reshape(self.sequence_length,[batch_size, 1]), tf.float32)
         )
         pool_out = tf.reshape(pool_out,[-1,self.hidden_size])
-
+        self.alph = tf.zeros_like(self.last_inputs)
         attlayer = FwNnAttLayer(
             self.edim,
             active=self.active,
@@ -162,7 +167,7 @@ class Seq2SeqAttNN(NN):
             tf.random_normal([self.edim, self.edim], stddev=self.stddev),
             trainable=True
         )
-        attout = tf.tanh(tf.matmul(attout,self.w1))
+        attout = tf.tanh(tf.matmul(pool_out,self.w1))
         # attout = tf.nn.dropout(attout, self.output_keep_probs)
         lastinputs= tf.tanh(tf.matmul(lastinputs,self.w2))
         # lastinputs= tf.nn.dropout(lastinputs, self.output_keep_probs)
@@ -195,11 +200,16 @@ class Seq2SeqAttNN(NN):
             while bt.has_next():    # batch round.
                 # get this batch data
                 batch_data = bt.next_batch()
+                #print(batch_data)
                 # build the feed_dict
                 # for x,y in zip(batch_data['in_idxes'],batch_data['out_idxes']):
                 batch_lenth = len(batch_data['in_idxes'])
                 event = len(batch_data['in_idxes'][0])
-
+                #print(batch_lenth)
+                print(batch_data['seq_lens'])
+                print(batch_lenth)
+                if(batch_lenth != 1):
+                    continue
                 if batch_lenth > self.batch_size:
                     patch_len = int(batch_lenth / self.batch_size)
                     remain = int(batch_lenth % self.batch_size)
@@ -220,6 +230,10 @@ class Seq2SeqAttNN(NN):
                                batch_in.append(tmp_in[:s + 1])
                                batch_out.append(_out)
                                batch_seq_l.append(s + 1)
+
+                            print(batch_in)
+                            print(batch_last)
+                            print(batch_out)
                             feed_dict = {
                                 self.inputs: batch_in,
                                 self.last_inputs: batch_last,
@@ -227,6 +241,8 @@ class Seq2SeqAttNN(NN):
                                 self.sequence_length: batch_seq_l
 
                             }
+                            print(feed_dict)
+                            exit(0)
                             # train
                             crt_loss, crt_step, opt, embe_dict = sess.run(
                                 [self.loss, self.global_step, self.optimize, self.embe_dict],
@@ -293,6 +309,8 @@ class Seq2SeqAttNN(NN):
                             self.sequence_length: batch_seq_l
 
                         }
+                        print(feed_dict)
+                        exit()
                         # train
                         crt_loss, crt_step, opt, embe_dict = sess.run(
                             [self.loss, self.global_step, self.optimize, self.embe_dict],
